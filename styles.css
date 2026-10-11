@@ -802,3 +802,18 @@ details p {
 .city-card{overflow:hidden}
 .city-card-image{display:block;width:calc(100% + 56px);max-width:none;height:190px;object-fit:cover;margin:-28px -28px 8px;background:var(--line)}
 @media(max-width:650px){.city-card-image{height:175px}}
+
+/* School filtering and side-by-side comparison */
+.compare-filters{display:flex;flex-wrap:wrap;align-items:end;gap:14px;margin:24px 0 8px}
+.compare-filters label{display:grid;gap:6px;font-size:14px;font-weight:600;flex:1 1 190px}
+.compare-filters select{font:inherit;background:var(--card);color:var(--ink);border:1px solid var(--line);padding:11px;max-width:100%}
+.compare-hint{font-size:14px;color:var(--ink-soft);margin:12px 0}
+.compare-pick{display:flex;align-items:center;gap:8px;white-space:nowrap;font-weight:600;cursor:pointer}
+.compare-pick input{width:18px;height:18px}
+.compare-panel{margin-top:24px;padding:18px;background:var(--card);border:1px solid var(--line)}
+.compare-panel-head{display:flex;flex-wrap:wrap;align-items:center;gap:12px}
+.compare-table-wrap{margin-top:20px;overflow-x:auto}
+.school-comparison{width:100%;border-collapse:collapse;min-width:650px}
+.school-comparison th,.school-comparison td{padding:12px;border:1px solid var(--line);text-align:left;vertical-align:top;min-width:140px;overflow-wrap:anywhere}
+.school-comparison th{background:var(--paper-2)}
+@media(max-width:650px){.school-card{grid-template-columns:1fr}.compare-filters{display:grid}}
