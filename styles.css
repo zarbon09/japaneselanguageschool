@@ -797,3 +797,8 @@ details p {
 .city-card-title{font-family:var(--serif);font-size:1.5rem}
 .city-card span:last-child{color:var(--ink-soft);font-size:15px}
 @media(max-width:650px){.city-cards{grid-template-columns:1fr}.hero-search-controls{flex-direction:column}.hero-search-controls input,.hero-search-controls select,.hero-search-controls button{flex:auto;width:100%}}
+
+/* City photography */
+.city-card{overflow:hidden}
+.city-card-image{display:block;width:calc(100% + 56px);max-width:none;height:190px;object-fit:cover;margin:-28px -28px 8px;background:var(--line)}
+@media(max-width:650px){.city-card-image{height:175px}}
