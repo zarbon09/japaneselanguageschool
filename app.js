@@ -337,24 +337,101 @@ function renderResults() {
   quizBody.querySelector("[data-close-quiz]").addEventListener("click", closeQuiz);
 }
 
+// School comparison: initial filters and side-by-side verified fields.
+const comparisonIds = new Set();
+let browseSource = schools;
+const filterLocation = document.getElementById("compare-location");
+const filterCourse = document.getElementById("compare-course");
+const filterDuration = document.getElementById("compare-duration");
+const comparePanel = document.getElementById("compare-panel");
+const compareTable = document.getElementById("compare-table");
+function knownDuration(school) {
+  const description = String(school.courses || "");
+  const matches = [...description.matchAll(/(\\d+)\\s*years?\\s*(?:(\\d+)\\s*months?)?|(\\d+)\\s*months?/gi)];
+  if (!matches.length) return null;
+  return Math.min(...matches.map(m => m[3] ? Number(m[3]) : Number(m[1])*12 + Number(m[2]||0)));
+}
+function filterBrowse() {
+  return browseSource.filter(school => {
+    const city = filterLocation?.value || "all";
+    const course = filterCourse?.value || "all";
+    const duration = filterDuration?.value || "all";
+    if (city !== "all" && String(school.city).toLowerCase() !== city) return false;
+    if (course !== "all" && !(school.goals || []).includes(course) && !(course === "short" && school.shortTerm)) return false;
+    if (duration !== "all") {
+      const months = knownDuration(school);
+      if (months === null) return false;
+      if (duration === "short" && months > 6) return false;
+      if (duration === "year" && (months <= 6 || months > 12)) return false;
+      if (duration === "long" && months <= 12) return false;
+    }
+    return true;
+  });
+}
+function safeSite(school) {
+  const url = officialWebsite(school.website);
+  return /^https?:\\/\\//i.test(url) ? url : "";
+}
+function updateComparison() {
+  const selected = schools.filter(s => comparisonIds.has(s.id));
+  comparePanel.hidden = !selected.length;
+  document.getElementById("compare-count").textContent = selected.length + " of 4 schools selected";
+  document.getElementById("compare-open").disabled = selected.length < 2;
+  if (selected.length < 2) compareTable.hidden = true;
+  if (!compareTable.hidden) showComparison();
+}
+function showComparison() {
+  const selected = schools.filter(s => comparisonIds.has(s.id));
+  if (selected.length < 2) return;
+  const unknown = "Not verified";
+  const rows = [
+    ["Location",s => s.prefecture || unknown],
+    ["Course type",s => (s.goals || []).map(g => ({general:"General Japanese",university:"University preparation",jlpt:"JLPT preparation",short:"Short-term"})[g] || g).join(", ") || unknown],
+    ["Listed courses",s => s.courses || unknown],
+    ["Course duration",s => knownDuration(s) !== null ? knownDuration(s) + " months (shortest listed)" : unknown],
+    ["Annual tuition fees",s => unknown],
+    ["Intake dates",s => unknown],
+    ["Minimum Japanese proficiency",s => unknown],
+    ["Accommodation",s => s.dorm === true ? "Listed as available" : s.dorm === false ? "Listed as unavailable" : unknown],
+    ["Student capacity",s => s.capacity ?? unknown],
+    ["Visa support",s => unknown],
+    ["Official website",s => safeSite(s) ? '<a href="' + escapeHtml(safeSite(s)) + '" target="_blank" rel="noopener noreferrer">Visit website ↗</a>' : unknown]
+  ];
+  compareTable.innerHTML = '<table class="school-comparison"><thead><tr><th scope="col">Compare</th>' + selected.map(s=>'<th scope="col">'+escapeHtml(s.name)+'</th>').join("") + '</tr></thead><tbody>' + rows.map(([label,get])=>'<tr><th scope="row">'+escapeHtml(label)+'</th>'+selected.map(s=>'<td>'+ (label === "Official website" ? get(s) : escapeHtml(String(get(s)))) +'</td>').join("")+'</tr>').join("")+'</tbody></table><p class="compare-hint">Tuition, intake, language requirements and visa support will be added when verified. Confirm all details with each school.</p>';
+  compareTable.hidden = false;
+  compareTable.scrollIntoView({behavior:"smooth",block:"nearest"});
+}
 function renderBrowse(list) {
+  browseSource = list;
+  const visible = filterBrowse();
   browseResults.hidden = false;
-  if (!list.length) {
-    browseResults.innerHTML = "<p>No schools in this extract match that filter.</p>";
+  if (!visible.length) {
+    browseResults.innerHTML = "<p>No schools match these filters. Try a different selection.</p>";
     return;
   }
-  browseResults.innerHTML = list
-    .map(
-      (school) => `
-      <article class="school-card">
-        <div>
-          <h3>${school.name}</h3>
-          <p>${school.citiesLabel} · ${school.courses} · capacity ${school.capacity ?? "n/a"}</p>
-        </div>
-      </article>`
-    )
-    .join("");
+  browseResults.innerHTML = visible.map(school => `
+    <article class="school-card">
+      <div><h3>${escapeHtml(school.name)}</h3>
+      <p>${escapeHtml(school.citiesLabel || school.prefecture || "")} · ${escapeHtml(school.courses || "Courses not verified")} · capacity ${escapeHtml(String(school.capacity ?? "n/a"))}</p>
+      ${safeSite(school) ? '<a href="' + escapeHtml(safeSite(school)) + '" target="_blank" rel="noopener noreferrer">Official website ↗</a>' : ""}
+      </div>
+      <label class="compare-pick"><input type="checkbox" data-compare-id="${escapeHtml(school.id)}" ${comparisonIds.has(school.id) ? "checked" : ""} ${!comparisonIds.has(school.id) && comparisonIds.size >= 4 ? "disabled" : ""}/> Compare</label>
+    </article>`).join("");
 }
+browseResults.addEventListener("change",event=>{
+  const input=event.target.closest("[data-compare-id]");
+  if(!input)return;
+  if(input.checked && comparisonIds.size >= 4){input.checked=false;return;}
+  if(input.checked)comparisonIds.add(input.dataset.compareId);else comparisonIds.delete(input.dataset.compareId);
+  renderBrowse(browseSource);
+  updateComparison();
+});
+[filterLocation,filterCourse,filterDuration].forEach(control=>control?.addEventListener("change",()=>renderBrowse(browseSource)));
+document.getElementById("compare-reset")?.addEventListener("click",()=>{
+  filterLocation.value="all";filterCourse.value="all";filterDuration.value="all";renderBrowse(schools);
+});
+document.getElementById("compare-clear")?.addEventListener("click",()=>{comparisonIds.clear();compareTable.hidden=true;renderBrowse(browseSource);updateComparison();});
+document.getElementById("compare-open")?.addEventListener("click",showComparison);
 
 // Homepage search and city shortcuts
 const heroSearch = document.getElementById("hero-search");
