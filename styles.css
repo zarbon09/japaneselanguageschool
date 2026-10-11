@@ -780,3 +780,20 @@ details p {
     grid-template-columns: 1fr;
   }
 }
+
+/* Homepage discovery */
+.hero-search{margin:0 0 18px;padding:18px;background:var(--card);border:1px solid var(--line)}
+.hero-search label{display:block;font-weight:600;margin-bottom:10px;font-size:15px}
+.hero-search-controls{display:flex;flex-wrap:wrap;gap:8px}
+.hero-search-controls input,.hero-search-controls select{min-width:0;padding:11px;border:1px solid var(--line);background:var(--white);color:var(--ink);font:inherit}
+.hero-search-controls input{flex:2 1 190px}
+.hero-search-controls select{flex:1 1 130px}
+.hero-search-controls button{flex:1 1 145px;justify-content:center;align-items:center}
+.city-explore{padding:52px 0;border-bottom:1px solid var(--line)}
+.city-cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+.city-card{display:flex;flex-direction:column;gap:10px;padding:28px;background:var(--card);border:1px solid var(--line);color:var(--ink);text-decoration:none}
+.city-card:hover,.city-card:focus-visible{border-color:var(--accent);color:var(--ink)}
+.city-card-jp{font-family:var(--serif);font-size:2rem;color:var(--accent)}
+.city-card-title{font-family:var(--serif);font-size:1.5rem}
+.city-card span:last-child{color:var(--ink-soft);font-size:15px}
+@media(max-width:650px){.city-cards{grid-template-columns:1fr}.hero-search-controls{flex-direction:column}.hero-search-controls input,.hero-search-controls select,.hero-search-controls button{flex:auto;width:100%}}
