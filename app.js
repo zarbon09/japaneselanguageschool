@@ -355,3 +355,29 @@ function renderBrowse(list) {
     )
     .join("");
 }
+
+// Homepage search and city shortcuts
+const heroSearch = document.getElementById("hero-search");
+if (heroSearch) {
+  heroSearch.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const query = document.getElementById("school-search").value.trim().toLowerCase();
+    const city = document.getElementById("school-city").value;
+    const matches = schools.filter((school) => {
+      const matchesCity = city === "any" || String(school.city || school.prefecture || "").toLowerCase() === city;
+      const haystack = [school.name, school.city, school.prefecture, school.address].join(" ").toLowerCase();
+      return matchesCity && (!query || haystack.includes(query));
+    });
+    document.querySelectorAll("[data-browse], [data-browse-goal]").forEach((chip) => chip.classList.remove("is-active"));
+    renderBrowse(matches);
+    document.getElementById("browse").scrollIntoView({ behavior: "smooth" });
+  });
+}
+document.querySelectorAll("[data-city-link]").forEach((link) => {
+  link.addEventListener("click", () => {
+    const city = link.dataset.cityLink;
+    document.querySelectorAll("[data-browse], [data-browse-goal]").forEach((chip) => chip.classList.remove("is-active"));
+    document.querySelector(`[data-browse="${city}"]`)?.classList.add("is-active");
+    renderBrowse(schools.filter((school) => String(school.city || "").toLowerCase() === city));
+  });
+});
