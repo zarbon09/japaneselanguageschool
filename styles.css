@@ -817,3 +817,64 @@ details p {
 .school-comparison th,.school-comparison td{padding:12px;border:1px solid var(--line);text-align:left;vertical-align:top;min-width:140px;overflow-wrap:anywhere}
 .school-comparison th{background:var(--paper-2)}
 @media(max-width:650px){.school-card{grid-template-columns:1fr}.compare-filters{display:grid}}
+
+
+/* Kawaii Japanese-inspired visual refresh: sakura, mochi, ink and soft surfaces */
+:root{
+  --paper:#fff9f6;--paper-2:#ffedf1;--ink:#302b43;--ink-soft:#685f73;
+  --line:#f2d9e1;--accent:#d65b82;--accent-hover:#b9406a;
+  --white:#ffffff;--card:#ffffff;--shadow:0 12px 32px rgba(111,66,93,.09);
+  --serif:"Source Sans 3","Segoe UI",sans-serif;
+  --max:1160px;
+}
+body{background:var(--paper);background-image:radial-gradient(circle at 12% 12%,rgba(255,203,217,.24) 0 12%,transparent 35%),radial-gradient(circle at 85% 35%,rgba(214,231,255,.22),transparent 30%)}
+h1,.section-title,.hero-card-title,.closing h2,.trust h2,.guide h2{font-family:var(--sans);font-weight:800;letter-spacing:-.035em}
+.site-header{background:rgba(255,250,250,.96);backdrop-filter:blur(12px);box-shadow:0 3px 18px rgba(111,66,93,.05)}
+.header-inner{min-height:76px}
+.logo{font-weight:800;color:var(--ink)}
+.logo-mark{border:0;border-radius:14px;background:#ffe0e9;color:#b9406a;box-shadow:inset 0 -3px rgba(214,91,130,.12);width:42px;height:42px;font-family:var(--sans);font-weight:800}
+.nav a{font-weight:600}.nav a:hover{color:var(--accent)}
+.btn,.chip,.compare-filters select,.hero-search input,.hero-search select{border-radius:999px;transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease}
+.btn{align-items:center;text-align:center;font-weight:700}
+.btn-primary{background:var(--accent);border-color:var(--accent);color:#fff;box-shadow:0 5px 0 #ad4166}
+.btn-primary:hover{background:var(--accent-hover);border-color:var(--accent-hover);transform:translateY(-2px);box-shadow:0 7px 0 #923452;color:#fff}
+.btn-ghost{background:#fff;border-color:#eecdd8}
+.btn-ghost:hover{background:#fff0f5;border-color:var(--accent)}
+.btn:focus-visible,.chip:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #7a5cb5;outline-offset:3px}
+.hero{position:relative;padding:82px 0 70px;background:linear-gradient(130deg,#fff5f8 0%,#fffaf4 65%,#f2f7ff 100%);overflow:hidden}
+.hero:before{content:"✿";position:absolute;right:6%;top:16px;color:#f7c9d7;font-size:clamp(5rem,16vw,12rem);line-height:1;opacity:.65;pointer-events:none}
+.hero:after{content:"✿  ✿";position:absolute;left:2%;bottom:5px;color:#f6d6e1;font-size:3rem;opacity:.65;pointer-events:none}
+.hero-grid{display:block;position:relative;z-index:1}
+.hero-copy{max-width:850px;margin:auto;text-align:center}
+.hero h1{font-size:clamp(2.4rem,5vw,4.3rem);line-height:1.08;color:var(--ink)}
+.eyebrow{color:#b9406a;letter-spacing:.08em}
+.lede{margin-inline:auto;max-width:650px}
+.hero-actions{justify-content:center}
+.hero-note{margin-inline:auto}
+.hero-search{background:rgba(255,255,255,.93);border:1px solid #f0d9e0;border-radius:26px;padding:24px;box-shadow:var(--shadow);text-align:left;margin:26px auto}
+.hero-search-controls input,.hero-search-controls select{border:1px solid var(--line);background:#fff}
+.hero-search-controls input:focus,.hero-search-controls select:focus{border-color:var(--accent)}
+.city-cards{gap:22px}
+.city-card{border-radius:24px;border:1px solid #f2d9e1;box-shadow:var(--shadow);transition:transform .2s ease,box-shadow .2s ease}
+.city-card:hover,.city-card:focus-visible{transform:translateY(-5px);box-shadow:0 16px 32px rgba(111,66,93,.14)}
+.city-card-image{border-radius:24px 24px 0 0}
+.city-card-jp{font-family:var(--sans);font-weight:800;color:var(--accent)}
+.city-card-title{font-family:var(--sans);font-weight:800}
+.plain-card,.school-card,.compare-panel,.quiz-panel{border-radius:20px;box-shadow:var(--shadow)}
+.plain-card{background:#fff;padding:24px;border:1px solid var(--line)}
+.school-card{transition:transform .18s ease,box-shadow .18s ease}
+.school-card:hover{transform:translateY(-2px);box-shadow:0 12px 26px rgba(111,66,93,.12)}
+.school-card h3{font-family:var(--sans);font-weight:800}
+.chip{background:#fff;font-weight:600}
+.chip.is-active,.chip:hover{background:#ffe4ed;border-color:#d65b82;color:#a52c58}
+.compare-panel{background:#fff}
+.school-comparison th{background:#fff0f5}
+.school-comparison tr:nth-child(even) td{background:#fffbfd}
+.quiz{background:rgba(48,43,67,.48)}
+.quiz-panel{border-radius:24px;overflow:auto}
+.quiz-bar{background:#fff0f5}
+.quiz-brand{color:#ad4166}
+.steps .step-num{display:grid;place-items:center;width:38px;height:38px;border-radius:50%;background:#ffe0e9;font-weight:800}
+.closing{background:linear-gradient(125deg,#ffe8f0,#f5edff)}
+@media(max-width:650px){.hero{padding:52px 0}.hero-search{padding:16px;border-radius:20px}.hero:before{right:-10%;top:6%;opacity:.35}.city-card{border-radius:20px}.city-card-image{border-radius:20px 20px 0 0}}
+@media(prefers-reduced-motion:reduce){.btn,.city-card,.school-card{transition:none}.btn:hover,.city-card:hover,.school-card:hover{transform:none}}
