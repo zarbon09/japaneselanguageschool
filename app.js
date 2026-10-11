@@ -347,7 +347,7 @@ const comparePanel = document.getElementById("compare-panel");
 const compareTable = document.getElementById("compare-table");
 function knownDuration(school) {
   const description = String(school.courses || "");
-  const matches = [...description.matchAll(/(\\d+)\\s*years?\\s*(?:(\\d+)\\s*months?)?|(\\d+)\\s*months?/gi)];
+  const matches = [...description.matchAll(/(\d+)\s*years?\s*(?:(\d+)\s*months?)?|(\d+)\s*months?/gi)];
   if (!matches.length) return null;
   return Math.min(...matches.map(m => m[3] ? Number(m[3]) : Number(m[1])*12 + Number(m[2]||0)));
 }
@@ -370,7 +370,7 @@ function filterBrowse() {
 }
 function safeSite(school) {
   const url = officialWebsite(school.website);
-  return /^https?:\\/\\//i.test(url) ? url : "";
+  return /^https?:\/\//i.test(url) ? url : "";
 }
 function updateComparison() {
   const selected = schools.filter(s => comparisonIds.has(s.id));
