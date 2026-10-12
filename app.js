@@ -432,6 +432,7 @@ document.getElementById("compare-reset")?.addEventListener("click",()=>{
 });
 document.getElementById("compare-clear")?.addEventListener("click",()=>{comparisonIds.clear();compareTable.hidden=true;renderBrowse(browseSource);updateComparison();});
 document.getElementById("compare-open")?.addEventListener("click",showComparison);
+renderBrowse(schools);
 
 // Homepage search and city shortcuts
 const heroSearch = document.getElementById("hero-search");
