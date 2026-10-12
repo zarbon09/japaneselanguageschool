@@ -90,14 +90,14 @@
       <section class="browse" id="browse">
         <div class="container">
           <h2 class="section-title">Find and compare schools</h2>
-          <p class="section-lead">Filter Japanese language schools by location, course type, and duration, then select up to four schools for a side-by-side comparison.</p>
+          <p class="section-lead">Filter Japanese language schools by location and course duration, then select up to four schools for a side-by-side comparison.</p>
           <div class="compare-filters" aria-label="School comparison filters">
 <label>Location <select id="compare-location"><option value="all">Tokyo and Osaka</option><option value="tokyo">Tokyo</option><option value="osaka">Osaka</option></select></label>
-<label>Course type <select id="compare-course"><option value="all">All course types</option><option value="general">General Japanese</option><option value="university">University preparation</option><option value="jlpt">JLPT preparation</option><option value="short">Short-term</option></select></label>
-<label>Course duration <select id="compare-duration"><option value="all">Any duration</option><option value="short">Up to 6 months</option><option value="year">7–12 months</option><option value="long">Over 12 months</option></select></label>
+<label>Course duration <select id="compare-duration"><option value="all">All durations</option><option value="upto3">Up to 3 months</option><option value="4to6">4–6 months</option><option value="7to12">7–12 months</option><option value="13to18">13–18 months</option><option value="19to24">19–24 months</option></select></label>
+<label class="compare-unknown"><input id="compare-unverified" type="checkbox" /> Include schools with unverified durations</label>
 <button class="btn btn-ghost" id="compare-reset" type="button">Reset filters</button>
 </div>
-<p class="compare-hint">Select 2–4 schools to compare. Course duration filters use listed course descriptions where available; unverified durations are excluded from duration-specific results.</p>
+<p class="compare-hint">Select 2–4 schools to compare. Durations are extracted from listed course descriptions and are not yet independently verified. The optional checkbox includes schools with no listed duration when a duration filter is selected.</p>
 <div id="browse-results" class="school-grid" hidden></div>
 <div id="compare-panel" class="compare-panel" hidden><div class="compare-panel-head"><strong id="compare-count">0 schools selected</strong><button class="btn btn-primary btn-sm" id="compare-open" type="button" disabled>Compare schools</button><button class="btn btn-ghost btn-sm" id="compare-clear" type="button">Clear</button></div><div id="compare-table" class="compare-table-wrap" hidden></div></div>
         </div>
