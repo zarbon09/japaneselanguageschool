@@ -341,31 +341,37 @@ function renderResults() {
 const comparisonIds = new Set();
 let browseSource = schools;
 const filterLocation = document.getElementById("compare-location");
-const filterCourse = document.getElementById("compare-course");
+const filterUnverified = document.getElementById("compare-unverified");
 const filterDuration = document.getElementById("compare-duration");
 const comparePanel = document.getElementById("compare-panel");
 const compareTable = document.getElementById("compare-table");
-function knownDuration(school) {
+// Extract every duration explicitly mentioned in the course descriptions.
+// Do not use durationMinMonths: many records contain unverified defaults.
+function listedDurations(school) {
   const description = String(school.courses || "");
-  const matches = [...description.matchAll(/(\d+)\s*years?\s*(?:(\d+)\s*months?)?|(\d+)\s*months?/gi)];
-  if (!matches.length) return null;
-  return Math.min(...matches.map(m => m[3] ? Number(m[3]) : Number(m[1])*12 + Number(m[2]||0)));
+  const matches = [...description.matchAll(/(\d+(?:\.\d+)?)\s*years?\s*(?:(\d+)\s*months?)?|(\d+)\s*months?/gi)];
+  return [...new Set(matches.map(m => m[3] ? Number(m[3]) : Math.round(Number(m[1]) * 12 + Number(m[2] || 0))))].filter(n => n > 0);
+}
+function knownDuration(school) {
+  const durations = listedDurations(school);
+  return durations.length ? Math.min(...durations) : null;
+}
+function durationMatches(months, duration) {
+  return (duration === "upto3" && months <= 3) ||
+    (duration === "4to6" && months >= 4 && months <= 6) ||
+    (duration === "7to12" && months >= 7 && months <= 12) ||
+    (duration === "13to18" && months >= 13 && months <= 18) ||
+    (duration === "19to24" && months >= 19 && months <= 24);
 }
 function filterBrowse() {
   return browseSource.filter(school => {
     const city = filterLocation?.value || "all";
-    const course = filterCourse?.value || "all";
     const duration = filterDuration?.value || "all";
     if (city !== "all" && String(school.city).toLowerCase() !== city) return false;
-    if (course !== "all" && !(school.goals || []).includes(course) && !(course === "short" && school.shortTerm)) return false;
-    if (duration !== "all") {
-      const months = knownDuration(school);
-      if (months === null) return false;
-      if (duration === "short" && months > 6) return false;
-      if (duration === "year" && (months <= 6 || months > 12)) return false;
-      if (duration === "long" && months <= 12) return false;
-    }
-    return true;
+    if (duration === "all") return true;
+    const durations = listedDurations(school);
+    if (!durations.length) return Boolean(filterUnverified?.checked);
+    return durations.some(months => durationMatches(months, duration));
   });
 }
 function safeSite(school) {
@@ -386,9 +392,8 @@ function showComparison() {
   const unknown = "Not verified";
   const rows = [
     ["Location",s => s.prefecture || unknown],
-    ["Course type",s => (s.goals || []).map(g => ({general:"General Japanese",university:"University preparation",jlpt:"JLPT preparation",short:"Short-term"})[g] || g).join(", ") || unknown],
     ["Listed courses",s => s.courses || unknown],
-    ["Course duration",s => knownDuration(s) !== null ? knownDuration(s) + " months (shortest listed)" : unknown],
+    ["Course durations (listed)",s => listedDurations(s).length ? listedDurations(s).sort((a,b)=>a-b).map(n=>n + " months").join(", ") : unknown],
     ["Annual tuition fees",s => unknown],
     ["Intake dates",s => unknown],
     ["Minimum Japanese proficiency",s => unknown],
@@ -412,7 +417,7 @@ function renderBrowse(list) {
   browseResults.innerHTML = visible.map(school => `
     <article class="school-card">
       <div><h3>${escapeHtml(school.name)}</h3>
-      <p>${escapeHtml(school.citiesLabel || school.prefecture || "")} · ${escapeHtml(school.courses || "Courses not verified")} · capacity ${escapeHtml(String(school.capacity ?? "n/a"))}</p>
+      <p>${escapeHtml(school.citiesLabel || school.prefecture || "")} · ${escapeHtml(school.courses || "Courses not verified")} · ${listedDurations(school).length ? "Listed durations: " + listedDurations(school).sort((a,b)=>a-b).join(", ") + " months" : "Duration not verified"} · capacity ${escapeHtml(String(school.capacity ?? "n/a"))}</p>
       ${safeSite(school) ? '<a href="' + escapeHtml(safeSite(school)) + '" target="_blank" rel="noopener noreferrer">Official website ↗</a>' : ""}
       </div>
       <label class="compare-pick"><input type="checkbox" data-compare-id="${escapeHtml(school.id)}" ${comparisonIds.has(school.id) ? "checked" : ""} ${!comparisonIds.has(school.id) && comparisonIds.size >= 4 ? "disabled" : ""}/> Compare</label>
@@ -426,9 +431,9 @@ browseResults.addEventListener("change",event=>{
   renderBrowse(browseSource);
   updateComparison();
 });
-[filterLocation,filterCourse,filterDuration].forEach(control=>control?.addEventListener("change",()=>renderBrowse(browseSource)));
+[filterLocation,filterDuration,filterUnverified].forEach(control=>control?.addEventListener("change",()=>renderBrowse(browseSource)));
 document.getElementById("compare-reset")?.addEventListener("click",()=>{
-  filterLocation.value="all";filterCourse.value="all";filterDuration.value="all";renderBrowse(schools);
+  filterLocation.value="all";filterDuration.value="all";filterUnverified.checked=false;renderBrowse(schools);
 });
 document.getElementById("compare-clear")?.addEventListener("click",()=>{comparisonIds.clear();compareTable.hidden=true;renderBrowse(browseSource);updateComparison();});
 document.getElementById("compare-open")?.addEventListener("click",showComparison);
