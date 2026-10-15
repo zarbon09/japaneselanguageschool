@@ -15,6 +15,65 @@ function officialWebsite(url) {
   return value;
 }
 
+// Course data is loaded from data/courses_combined.csv after the school directory.
+const coursesBySchool = new Map();
+let coursesLoaded = false;
+function parseCsv(text) {
+  const rows = []; let row = [], field = '', quoted = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (c === '"') {
+      if (quoted && text[i + 1] === '"') { field += '"'; i++; }
+      else quoted = !quoted;
+    } else if (c === ',' && !quoted) { row.push(field); field = ''; }
+    else if ((c === '\n' || c === '\r') && !quoted) {
+      if (c === '\r' && text[i+1] === '\n') i++;
+      row.push(field); if (row.some(x => x.trim())) rows.push(row);
+      row = []; field = '';
+    } else field += c;
+  }
+  row.push(field); if (row.some(x => x.trim())) rows.push(row);
+  const headers = (rows.shift() || []).map(x => x.replace(/^\uFEFF/, '').trim());
+  return rows.map(values => Object.fromEntries(headers.map((key, i) => [key, (values[i] || '').trim()])));
+}
+async function loadCourses() {
+  try {
+    const response = await fetch('data/courses_combined.csv', {cache:'no-cache'});
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const records = parseCsv(await response.text());
+    for (const course of records) {
+      if (!course.school_id || !schools.some(s => s.id === course.school_id)) continue;
+      if (!coursesBySchool.has(course.school_id)) coursesBySchool.set(course.school_id, []);
+      coursesBySchool.get(course.school_id).push(course);
+    }
+    coursesLoaded = true;
+    if (browseResults && !browseResults.hidden) {
+      const activeCity = document.querySelector('[data-browse].is-active');
+      const activeGoal = document.querySelector('[data-browse-goal].is-active');
+      if (activeCity) renderBrowse(schools.filter(s => s.city === activeCity.dataset.browse));
+      else if (activeGoal) renderBrowse(schools.filter(s => s.goals.includes(activeGoal.dataset.browseGoal)));
+    }
+    console.info(`Loaded ${records.length} course records for ${coursesBySchool.size} schools`);
+  } catch (error) {
+    console.error('Could not load courses CSV', error);
+    const notice = document.getElementById('course-data-status');
+    if (notice) notice.textContent = 'Course fee and duration data could not be loaded. Please try again later.';
+  }
+}
+function yen(value) {
+  if (value === undefined || value === null || String(value).trim() === '') return 'Not listed';
+  const n = Number(value);
+  return Number.isFinite(n) ? `¥${Math.round(n).toLocaleString('en-US')}` : 'Not listed';
+}
+function courseDetails(school) {
+  const records = coursesBySchool.get(school.id) || [];
+  if (!records.length) return '<p>Course fees and durations: Not listed</p>';
+  return `<div class="course-details"><strong>Courses and fees</strong><ul>${records.map(c =>
+    `<li><strong>${escapeHtml(c.course_name || 'Course')}</strong> — ${escapeHtml(c.duration_months)} months; tuition ${yen(c.tuition_fee_jpy)}; total course fees ${yen(c.total_course_cost_jpy === '0' && !c.tuition_fee_jpy ? '' : c.total_course_cost_jpy)}; intake ${displayOrDash(c.intake_months)}.</li>`
+  ).join('')}</ul><small>Figures are from the course dataset; confirm current fees and intakes directly with the school. Accommodation is not included unless specified.</small></div>`;
+}
+loadCourses();
+
 const steps = [
   {
     key: "level",
@@ -45,8 +104,10 @@ const steps = [
     options: [
       { value: 3, label: "Up to 3 months" },
       { value: 6, label: "About 6 months" },
-      { value: 12, label: "1 year" },
-      { value: 24, label: "18–24 months" },
+      { value: 12, label: "12 months" },
+      { value: 15, label: "15 months" },
+      { value: 18, label: "18 months" },
+      { value: 24, label: "24 months" },
     ],
   },
   {
@@ -258,11 +319,16 @@ function scoreSchool(school) {
     score -= 18;
   }
 
-  if (answers.duration >= school.durationMinMonths) {
-    score += 6;
-  } else if (answers.visa === "need") {
+  const availableDurations = (coursesBySchool.get(school.id) || [])
+    .map(c => Number(c.duration_months)).filter(Number.isFinite);
+  if (availableDurations.includes(answers.duration)) {
+    score += 12;
+    reasons.push(`A ${answers.duration}-month course is listed`);
+  } else if (availableDurations.length) {
     score -= 20;
-    reasons.push("Your planned length may be short for the listed courses");
+    reasons.push(`No ${answers.duration}-month course is listed`);
+  } else {
+    reasons.push('Course duration is not verified in this dataset');
   }
 
   if (answers.level === "none" && school.goals.includes("general")) {
@@ -320,6 +386,7 @@ function renderResults() {
                 : "Not listed"
             }</dd></div>
           </dl>
+          ${courseDetails(school)}
           <p class="tradeoff">Contact school for further information</p>
         </article>`;
               })
@@ -348,8 +415,9 @@ function renderBrowse(list) {
       (school) => `
       <article class="school-card">
         <div>
-          <h3>${school.name}</h3>
-          <p>${school.citiesLabel} · ${school.courses} · capacity ${school.capacity ?? "n/a"}</p>
+          <h3>${escapeHtml(school.name)}</h3>
+          <p>${escapeHtml(school.citiesLabel || '')} · capacity ${school.capacity ?? "n/a"}</p>
+          ${courseDetails(school)}
         </div>
       </article>`
     )
