@@ -15,6 +15,66 @@ function officialWebsite(url) {
   return value;
 }
 
+// Course data is loaded from data/courses_combined.csv after the school directory.
+const coursesBySchool = new Map();
+let coursesLoaded = false;
+function parseCsv(text) {
+  const rows = []; let row = [], field = '', quoted = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (c === '"') {
+      if (quoted && text[i + 1] === '"') { field += '"'; i++; }
+      else quoted = !quoted;
+    } else if (c === ',' && !quoted) { row.push(field); field = ''; }
+    else if ((c === '\n' || c === '\r') && !quoted) {
+      if (c === '\r' && text[i+1] === '\n') i++;
+      row.push(field); if (row.some(x => x.trim())) rows.push(row);
+      row = []; field = '';
+    } else field += c;
+  }
+  row.push(field); if (row.some(x => x.trim())) rows.push(row);
+  const headers = (rows.shift() || []).map(x => x.replace(/^\uFEFF/, '').trim());
+  return rows.map(values => Object.fromEntries(headers.map((key, i) => [key, (values[i] || '').trim()])));
+}
+async function loadCourses() {
+  try {
+    const response = await fetch('data/courses_combined.csv', {cache:'no-cache'});
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const records = parseCsv(await response.text());
+    for (const course of records) {
+      if (!course.school_id || !schools.some(s => s.id === course.school_id)) continue;
+      if (!coursesBySchool.has(course.school_id)) coursesBySchool.set(course.school_id, []);
+      coursesBySchool.get(course.school_id).push(course);
+    }
+    coursesLoaded = true;
+    renderCourseComparison();
+    if (browseResults && !browseResults.hidden) {
+      const activeCity = document.querySelector('[data-browse].is-active');
+      const activeGoal = document.querySelector('[data-browse-goal].is-active');
+      if (activeCity) renderBrowse(schools.filter(s => s.city === activeCity.dataset.browse));
+      else if (activeGoal) renderBrowse(schools.filter(s => s.goals.includes(activeGoal.dataset.browseGoal)));
+    }
+    console.info(`Loaded ${records.length} course records for ${coursesBySchool.size} schools`);
+  } catch (error) {
+    console.error('Could not load courses CSV', error);
+    const notice = document.getElementById('course-data-status');
+    if (notice) notice.textContent = 'Course fee and duration data could not be loaded. Please try again later.';
+  }
+}
+function yen(value) {
+  if (value === undefined || value === null || String(value).trim() === '') return 'Not listed';
+  const n = Number(value);
+  return Number.isFinite(n) ? `¥${Math.round(n).toLocaleString('en-US')}` : 'Not listed';
+}
+function courseDetails(school) {
+  const records = coursesBySchool.get(school.id) || [];
+  if (!records.length) return '<p>Course fees and durations: Not listed</p>';
+  return `<div class="course-details"><strong>Courses and fees</strong><ul>${records.map(c =>
+    `<li><strong>${escapeHtml(c.course_name || 'Course')}</strong> — ${escapeHtml(c.duration_months)} months; tuition ${yen(c.tuition_fee_jpy)}; total course fees ${yen(c.total_course_cost_jpy === '0' && !c.tuition_fee_jpy ? '' : c.total_course_cost_jpy)}; intake ${displayOrDash(c.intake_months)}.</li>`
+  ).join('')}</ul><small>Figures are from the course dataset; confirm current fees and intakes directly with the school. Accommodation is not included unless specified.</small></div>`;
+}
+loadCourses();
+
 const steps = [
   {
     key: "level",
@@ -45,8 +105,10 @@ const steps = [
     options: [
       { value: 3, label: "Up to 3 months" },
       { value: 6, label: "About 6 months" },
-      { value: 12, label: "1 year" },
-      { value: 24, label: "18–24 months" },
+      { value: 12, label: "12 months" },
+      { value: 15, label: "15 months" },
+      { value: 18, label: "18 months" },
+      { value: 24, label: "24 months" },
     ],
   },
   {
@@ -258,11 +320,16 @@ function scoreSchool(school) {
     score -= 18;
   }
 
-  if (answers.duration >= school.durationMinMonths) {
-    score += 6;
-  } else if (answers.visa === "need") {
+  const availableDurations = (coursesBySchool.get(school.id) || [])
+    .map(c => Number(c.duration_months)).filter(Number.isFinite);
+  if (availableDurations.includes(answers.duration)) {
+    score += 12;
+    reasons.push(`A ${answers.duration}-month course is listed`);
+  } else if (availableDurations.length) {
     score -= 20;
-    reasons.push("Your planned length may be short for the listed courses");
+    reasons.push(`No ${answers.duration}-month course is listed`);
+  } else {
+    reasons.push('Course duration is not verified in this dataset');
   }
 
   if (answers.level === "none" && school.goals.includes("general")) {
@@ -320,6 +387,7 @@ function renderResults() {
                 : "Not listed"
             }</dd></div>
           </dl>
+          ${courseDetails(school)}
           <p class="tradeoff">Contact school for further information</p>
         </article>`;
               })
@@ -348,10 +416,84 @@ function renderBrowse(list) {
       (school) => `
       <article class="school-card">
         <div>
-          <h3>${school.name}</h3>
-          <p>${school.citiesLabel} · ${school.courses} · capacity ${school.capacity ?? "n/a"}</p>
+          <h3>${escapeHtml(school.name)}</h3>
+          <p>${escapeHtml(school.citiesLabel || '')} · capacity ${school.capacity ?? "n/a"}</p>
+          ${courseDetails(school)}
         </div>
       </article>`
     )
     .join("");
 }
+
+
+// Course-level filtering and side-by-side comparison (up to four courses).
+const compareSelected = new Set();
+const compareRoot = document.getElementById('compare-course-results');
+const compareStatus = document.getElementById('compare-status');
+const compareTableContainer = document.getElementById('compare-table-container');
+const compareInputs = ['compare-city','compare-duration','compare-budget','compare-sort'];
+const schoolById = new Map(schools.map(s => [s.id,s]));
+function validFee(course, key) {
+  const raw = String(course[key] ?? '').trim();
+  if (!raw || (key === 'total_course_cost_jpy' && raw === '0' && !String(course.tuition_fee_jpy ?? '').trim())) return null;
+  const n = Number(raw);
+  return Number.isFinite(n) && n >= 0 ? n : null;
+}
+function allCourseRows() {
+  return [...coursesBySchool.values()].flat().filter(c => schoolById.has(c.school_id));
+}
+function renderCourseComparison() {
+  if (!compareRoot) return;
+  if (!coursesLoaded) { compareStatus.textContent = 'Loading courses…'; return; }
+  const city = document.getElementById('compare-city').value;
+  const duration = document.getElementById('compare-duration').value;
+  const budget = document.getElementById('compare-budget').value;
+  const sort = document.getElementById('compare-sort').value;
+  const matches = allCourseRows().filter(c => {
+    if (city !== 'all' && schoolById.get(c.school_id).city !== city) return false;
+    if (duration !== 'all' && Number(c.duration_months) !== Number(duration)) return false;
+    const fee = validFee(c, 'total_course_cost_jpy');
+    if (budget !== 'all' && (fee === null || fee > Number(budget))) return false;
+    return true;
+  });
+  matches.sort((a,b) => sort === 'name'
+    ? a.school_name.localeCompare(b.school_name)
+    : sort === 'duration'
+      ? Number(a.duration_months)-Number(b.duration_months) || (validFee(a,'total_course_cost_jpy') ?? Infinity)-(validFee(b,'total_course_cost_jpy') ?? Infinity)
+      : (validFee(a,'total_course_cost_jpy') ?? Infinity)-(validFee(b,'total_course_cost_jpy') ?? Infinity));
+  compareStatus.textContent = `${matches.length} matching courses. Select up to four to compare.`;
+  compareRoot.innerHTML = matches.map(c => `<article class="compare-course-card">
+    <label><input type="checkbox" data-compare-id="${escapeHtml(c.course_id)}" ${compareSelected.has(c.course_id)?'checked':''} ${compareSelected.size >= 4 && !compareSelected.has(c.course_id)?'disabled':''}> Add to compare</label>
+    <h3>${escapeHtml(c.school_name)}</h3><p>${escapeHtml(c.course_name)} · ${escapeHtml(c.duration_months)} months</p>
+    <p><strong>Total: ${yen(validFee(c,'total_course_cost_jpy'))}</strong></p><p>Tuition: ${yen(validFee(c,'tuition_fee_jpy'))}</p>
+    <small>${escapeHtml(c.prefecture)} · Intake: ${displayOrDash(c.intake_months)}</small></article>`).join('') || '<p>No courses match these filters. Try a different duration or budget.</p>';
+  compareRoot.querySelectorAll('[data-compare-id]').forEach(el => el.addEventListener('change', () => {
+    if (el.checked && compareSelected.size < 4) compareSelected.add(el.dataset.compareId);
+    else compareSelected.delete(el.dataset.compareId);
+    renderCourseComparison();
+  }));
+  document.getElementById('compare-selected-count').textContent = `${compareSelected.size} of 4 selected`;
+  document.getElementById('compare-selected-button').disabled = compareSelected.size < 2;
+}
+compareInputs.forEach(id => document.getElementById(id)?.addEventListener('change',renderCourseComparison));
+document.getElementById('compare-clear-button')?.addEventListener('click',()=>{
+  compareSelected.clear();compareTableContainer.hidden=true;renderCourseComparison();
+});
+document.getElementById('compare-selected-button')?.addEventListener('click',()=>{
+  const selected = allCourseRows().filter(c => compareSelected.has(c.course_id));
+  if(selected.length<2)return;
+  const columns = selected.map(c=>`<th scope="col">${escapeHtml(c.school_name)}<br><small>${escapeHtml(c.course_name)}</small></th>`).join('');
+  const values = [
+    ['Location',c=>c.prefecture],['Duration',c=>`${c.duration_months} months`],
+    ['Intake months',c=>c.intake_months||'Not listed'],
+    ['Tuition',c=>yen(validFee(c,'tuition_fee_jpy'))],
+    ['Application fee',c=>yen(validFee(c,'application_fee_jpy'))],
+    ['Admission fee',c=>yen(validFee(c,'admission_fee_jpy'))],
+    ['Other required fees',c=>yen(validFee(c,'other_required_fees_jpy'))],
+    ['Total course fees',c=>yen(validFee(c,'total_course_cost_jpy'))]
+  ];
+  compareTableContainer.innerHTML=`<h3>Side-by-side course comparison</h3><div class="compare-table-scroll"><table class="compare-table"><thead><tr><th scope="col">Detail</th>${columns}</tr></thead><tbody>${values.map(([label,get])=>`<tr><th scope="row">${label}</th>${selected.map(c=>`<td>${escapeHtml(get(c))}</td>`).join('')}</tr>`).join('')}<tr><th scope="row">Official website</th>${selected.map(c=>{const url=schoolById.get(c.school_id)?.website;return `<td>${url && /^https?:\/\//i.test(url)?`<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">Visit school</a>`:'Not listed'}</td>`}).join('')}</tr></tbody></table></div><p><small>Fees and intake dates have not been independently verified. Confirm all costs with the school. Accommodation and living costs are not included unless explicitly stated.</small></p>`;
+  compareTableContainer.hidden=false;
+  compareTableContainer.focus();
+});
+renderCourseComparison();
