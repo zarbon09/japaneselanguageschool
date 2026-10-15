@@ -47,6 +47,7 @@ async function loadCourses() {
       coursesBySchool.get(course.school_id).push(course);
     }
     coursesLoaded = true;
+    renderCourseComparison();
     if (browseResults && !browseResults.hidden) {
       const activeCity = document.querySelector('[data-browse].is-active');
       const activeGoal = document.querySelector('[data-browse-goal].is-active');
@@ -423,3 +424,76 @@ function renderBrowse(list) {
     )
     .join("");
 }
+
+
+// Course-level filtering and side-by-side comparison (up to four courses).
+const compareSelected = new Set();
+const compareRoot = document.getElementById('compare-course-results');
+const compareStatus = document.getElementById('compare-status');
+const compareTableContainer = document.getElementById('compare-table-container');
+const compareInputs = ['compare-city','compare-duration','compare-budget','compare-sort'];
+const schoolById = new Map(schools.map(s => [s.id,s]));
+function validFee(course, key) {
+  const raw = String(course[key] ?? '').trim();
+  if (!raw || (key === 'total_course_cost_jpy' && raw === '0' && !String(course.tuition_fee_jpy ?? '').trim())) return null;
+  const n = Number(raw);
+  return Number.isFinite(n) && n >= 0 ? n : null;
+}
+function allCourseRows() {
+  return [...coursesBySchool.values()].flat().filter(c => schoolById.has(c.school_id));
+}
+function renderCourseComparison() {
+  if (!compareRoot) return;
+  if (!coursesLoaded) { compareStatus.textContent = 'Loading courses…'; return; }
+  const city = document.getElementById('compare-city').value;
+  const duration = document.getElementById('compare-duration').value;
+  const budget = document.getElementById('compare-budget').value;
+  const sort = document.getElementById('compare-sort').value;
+  const matches = allCourseRows().filter(c => {
+    if (city !== 'all' && schoolById.get(c.school_id).city !== city) return false;
+    if (duration !== 'all' && Number(c.duration_months) !== Number(duration)) return false;
+    const fee = validFee(c, 'total_course_cost_jpy');
+    if (budget !== 'all' && (fee === null || fee > Number(budget))) return false;
+    return true;
+  });
+  matches.sort((a,b) => sort === 'name'
+    ? a.school_name.localeCompare(b.school_name)
+    : sort === 'duration'
+      ? Number(a.duration_months)-Number(b.duration_months) || (validFee(a,'total_course_cost_jpy') ?? Infinity)-(validFee(b,'total_course_cost_jpy') ?? Infinity)
+      : (validFee(a,'total_course_cost_jpy') ?? Infinity)-(validFee(b,'total_course_cost_jpy') ?? Infinity));
+  compareStatus.textContent = `${matches.length} matching courses. Select up to four to compare.`;
+  compareRoot.innerHTML = matches.map(c => `<article class="compare-course-card">
+    <label><input type="checkbox" data-compare-id="${escapeHtml(c.course_id)}" ${compareSelected.has(c.course_id)?'checked':''} ${compareSelected.size >= 4 && !compareSelected.has(c.course_id)?'disabled':''}> Add to compare</label>
+    <h3>${escapeHtml(c.school_name)}</h3><p>${escapeHtml(c.course_name)} · ${escapeHtml(c.duration_months)} months</p>
+    <p><strong>Total: ${yen(validFee(c,'total_course_cost_jpy'))}</strong></p><p>Tuition: ${yen(validFee(c,'tuition_fee_jpy'))}</p>
+    <small>${escapeHtml(c.prefecture)} · Intake: ${displayOrDash(c.intake_months)}</small></article>`).join('') || '<p>No courses match these filters. Try a different duration or budget.</p>';
+  compareRoot.querySelectorAll('[data-compare-id]').forEach(el => el.addEventListener('change', () => {
+    if (el.checked && compareSelected.size < 4) compareSelected.add(el.dataset.compareId);
+    else compareSelected.delete(el.dataset.compareId);
+    renderCourseComparison();
+  }));
+  document.getElementById('compare-selected-count').textContent = `${compareSelected.size} of 4 selected`;
+  document.getElementById('compare-selected-button').disabled = compareSelected.size < 2;
+}
+compareInputs.forEach(id => document.getElementById(id)?.addEventListener('change',renderCourseComparison));
+document.getElementById('compare-clear-button')?.addEventListener('click',()=>{
+  compareSelected.clear();compareTableContainer.hidden=true;renderCourseComparison();
+});
+document.getElementById('compare-selected-button')?.addEventListener('click',()=>{
+  const selected = allCourseRows().filter(c => compareSelected.has(c.course_id));
+  if(selected.length<2)return;
+  const columns = selected.map(c=>`<th scope="col">${escapeHtml(c.school_name)}<br><small>${escapeHtml(c.course_name)}</small></th>`).join('');
+  const values = [
+    ['Location',c=>c.prefecture],['Duration',c=>`${c.duration_months} months`],
+    ['Intake months',c=>c.intake_months||'Not listed'],
+    ['Tuition',c=>yen(validFee(c,'tuition_fee_jpy'))],
+    ['Application fee',c=>yen(validFee(c,'application_fee_jpy'))],
+    ['Admission fee',c=>yen(validFee(c,'admission_fee_jpy'))],
+    ['Other required fees',c=>yen(validFee(c,'other_required_fees_jpy'))],
+    ['Total course fees',c=>yen(validFee(c,'total_course_cost_jpy'))]
+  ];
+  compareTableContainer.innerHTML=`<h3>Side-by-side course comparison</h3><div class="compare-table-scroll"><table class="compare-table"><thead><tr><th scope="col">Detail</th>${columns}</tr></thead><tbody>${values.map(([label,get])=>`<tr><th scope="row">${label}</th>${selected.map(c=>`<td>${escapeHtml(get(c))}</td>`).join('')}</tr>`).join('')}<tr><th scope="row">Official website</th>${selected.map(c=>{const url=schoolById.get(c.school_id)?.website;return `<td>${url && /^https?:\/\//i.test(url)?`<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">Visit school</a>`:'Not listed'}</td>`}).join('')}</tr></tbody></table></div><p><small>Fees and intake dates have not been independently verified. Confirm all costs with the school. Accommodation and living costs are not included unless explicitly stated.</small></p>`;
+  compareTableContainer.hidden=false;
+  compareTableContainer.focus();
+});
+renderCourseComparison();
