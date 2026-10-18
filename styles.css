@@ -92,9 +92,13 @@ a:hover {
 }
 
 .nav {
+  order: 3;
   display: flex;
+  flex: 1 0 100%;
+  justify-content: center;
   gap: 20px;
-  margin-left: auto;
+  margin-left: 0;
+  padding-bottom: 12px;
 }
 
 .nav a {
@@ -148,9 +152,11 @@ a:hover {
 }
 
 .header-actions {
+  order: 2;
   display: flex;
   align-items: center;
   gap: 16px;
+  margin-left: auto;
 }
 
 .header-contact {
@@ -888,6 +894,10 @@ details p {
 @media (max-width: 860px) {
   .nav {
     display: none;
+  }
+
+  .header-actions {
+    flex-basis: auto;
   }
 
   .hero-grid,
