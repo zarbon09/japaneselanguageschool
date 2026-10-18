@@ -1,16 +1,16 @@
 :root {
-  --paper: #f4efe6;
-  --paper-2: #ebe4d6;
-  --ink: #1c1915;
-  --ink-soft: #5c564c;
-  --line: #d4cbb8;
-  --accent: #9c2b1d;
-  --accent-hover: #7e2218;
-  --white: #fcfaf6;
-  --card: #fffdf8;
+  --paper: #f7f3ea;
+  --paper-2: #eee6d8;
+  --ink: #1d3548;
+  --ink-soft: #56656c;
+  --line: #d8cebd;
+  --accent: #b53b2c;
+  --accent-hover: #922e23;
+  --white: #fffdf8;
+  --card: #fffaf1;
   --shadow: none;
-  --serif: "Newsreader", "Iowan Old Style", Georgia, serif;
-  --sans: "Source Sans 3", "Segoe UI", sans-serif;
+  --serif: "Noto Serif JP", "Newsreader", "Iowan Old Style", Georgia, serif;
+  --sans: "Noto Sans JP", "Source Sans 3", "Segoe UI", sans-serif;
   --max: 1080px;
 }
 
@@ -83,7 +83,9 @@ a:hover {
   place-items: center;
   width: 32px;
   height: 32px;
-  border: 1px solid var(--ink);
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: var(--white);
   font-family: var(--serif);
   font-size: 16px;
   line-height: 1;
@@ -171,6 +173,11 @@ a:hover {
 .hero {
   padding: 64px 0 72px;
   border-bottom: 1px solid var(--line);
+  background-color: var(--paper);
+  background-image:
+    radial-gradient(circle at 0 100%, transparent 15px, rgba(29, 53, 72, 0.045) 16px, transparent 17px),
+    radial-gradient(circle at 16px 100%, transparent 15px, rgba(29, 53, 72, 0.045) 16px, transparent 17px);
+  background-size: 32px 16px;
 }
 
 .hero-grid {
@@ -289,6 +296,15 @@ h1 {
 .section-title {
   margin: 0 0 10px;
   font-size: clamp(1.6rem, 3vw, 2.1rem);
+}
+
+.section-title::after {
+  content: "";
+  display: block;
+  width: 42px;
+  height: 2px;
+  margin-top: 12px;
+  background: var(--accent);
 }
 
 .section-lead {
@@ -558,6 +574,26 @@ details p {
 .contact-honeypot {
   position: absolute;
   left: -10000px;
+}
+
+.compare-empty-state {
+  margin: 18px 0;
+  padding: 20px 22px;
+  border: 1px dashed var(--line);
+  background: var(--card);
+  color: var(--ink-soft);
+}
+
+.compare-controls select {
+  border-color: var(--line) !important;
+  color: var(--ink);
+  font: inherit;
+}
+
+.compare-course-card {
+  border-color: var(--line) !important;
+  border-radius: 2px !important;
+  background: var(--card) !important;
 }
 
 .closing {
