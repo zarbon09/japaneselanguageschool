@@ -449,6 +449,13 @@ function renderCourseComparison() {
   const duration = document.getElementById('compare-duration').value;
   const budget = document.getElementById('compare-budget').value;
   const sort = document.getElementById('compare-sort').value;
+  if (city === 'all' && duration === 'all' && budget === 'all') {
+    compareStatus.textContent = 'Choose a location, duration, or maximum fee to view matching courses.';
+    compareRoot.innerHTML = '<p class="compare-empty-state">Course results will appear here after you choose at least one filter above.</p>';
+    document.getElementById('compare-selected-count').textContent = `${compareSelected.size} of 4 selected`;
+    document.getElementById('compare-selected-button').disabled = compareSelected.size < 2;
+    return;
+  }
   const matches = allCourseRows().filter(c => {
     if (city !== 'all' && schoolById.get(c.school_id).city !== city) return false;
     if (duration !== 'all' && Number(c.duration_months) !== Number(duration)) return false;
